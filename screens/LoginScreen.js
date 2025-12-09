@@ -40,7 +40,7 @@ const LoginScreen = () => {
         <View style={styles.container}>
             <View style={styles.heroContainer}>
                 <Image
-                    source={require('../assets/login_hero.png')}
+                    source={require('../assets/login_hero.jpg')}
                     style={styles.heroImage}
                     resizeMode="contain"
                 />
