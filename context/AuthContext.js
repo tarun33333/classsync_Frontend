@@ -9,6 +9,7 @@ export const AuthProvider = ({ children }) => {
     const [userRole, setUserRole] = useState(null);
     const [userInfo, setUserInfo] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [splashLoading, setSplashLoading] = useState(true);
 
     const login = async (email, password, macAddress) => {
         setIsLoading(true);
@@ -44,7 +45,6 @@ export const AuthProvider = ({ children }) => {
 
     const isLoggedIn = async () => {
         try {
-            setIsLoading(true);
             let userToken = await SecureStore.getItemAsync('userToken');
             let userRole = await SecureStore.getItemAsync('userRole');
             let userInfo = await SecureStore.getItemAsync('userInfo');
@@ -52,12 +52,6 @@ export const AuthProvider = ({ children }) => {
             if (userToken) {
                 try {
                     // VERIFY TOKEN WITH BACKEND
-                    // We need to manually set header here because 'client' interceptor 
-                    // might not have picked up the token from store yet if we just set it.
-                    // Actually interceptor reads from Store, so it should be fine? 
-                    // Let's be safe and set it or rely on interceptor.
-                    // Interceptor reads 'userToken' from SecureStore.
-
                     const res = await client.get('/auth/verify');
 
                     // Token is valid, update state with fresh user data
@@ -75,10 +69,10 @@ export const AuthProvider = ({ children }) => {
                     await logout();
                 }
             }
-            setIsLoading(false);
         } catch (e) {
             console.log(`isLoggedIn error ${e}`);
-            setIsLoading(false);
+        } finally {
+            setSplashLoading(false);
         }
     };
 
@@ -87,7 +81,7 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ login, logout, isLoading, userToken, userRole, userInfo }}>
+        <AuthContext.Provider value={{ login, logout, isLoading, splashLoading, userToken, userRole, userInfo }}>
             {children}
         </AuthContext.Provider>
     );

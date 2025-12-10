@@ -65,7 +65,17 @@ const StudentTabs = () => (
 );
 
 const AppNav = () => {
-  const { userToken, userRole, isLoading } = useContext(AuthContext);
+  const { userToken, userRole, isLoading, splashLoading } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (!splashLoading) {
+      SplashScreen.hideAsync();
+    }
+  }, [splashLoading]);
+
+  if (splashLoading) {
+    return null;
+  }
 
   if (isLoading) {
     return <LoadingScreen visible={true} message="Authenticating..." />;
@@ -97,45 +107,22 @@ const AppNav = () => {
 };
 
 export default function App() {
-  const [appIsReady, setAppIsReady] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
-
   useEffect(() => {
     async function prepare() {
       try {
-        // Prevent auto-hiding the native splash screen
         await SplashScreen.preventAutoHideAsync();
       } catch (e) {
         console.warn(e);
-      } finally {
-        setAppIsReady(true);
       }
     }
-
     prepare();
   }, []);
 
-  const onLayoutRootView = useCallback(async () => {
-    if (appIsReady) {
-      await SplashScreen.hideAsync();
-    }
-  }, [appIsReady]);
-
-  if (!appIsReady) {
-    return null;
-  }
-
-  if (showSplash) {
-    return (
-      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-        <CustomSplashScreen onFinish={() => setShowSplash(false)} />
-      </View>
-    );
-  }
-
   return (
-    <AuthProvider>
-      <AppNav />
-    </AuthProvider>
+    <View style={{ flex: 1 }}>
+      <AuthProvider>
+        <AppNav />
+      </AuthProvider>
+    </View>
   );
 }
