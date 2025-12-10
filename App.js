@@ -5,9 +5,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
 
-// import CustomSplashScreen from './screens/CustomSplashScreen';
+import CustomSplashScreen from './screens/CustomSplashScreen';
 import LoadingScreen from './components/LoadingScreen';
 
 import LoginScreen from './screens/LoginScreen';
@@ -22,6 +22,19 @@ import ProfileScreen from './screens/ProfileScreen';
 import TimetableScreen from './screens/TimetableScreen';
 import ODApplyScreen from './screens/ODApplyScreen';
 import AdvisorDashboard from './screens/AdvisorDashboard';
+import AnnouncementsScreen from './screens/AnnouncementsScreen';
+import CreateAnnouncementScreen from './screens/CreateAnnouncementScreen';
+
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -65,16 +78,16 @@ const StudentTabs = () => (
 );
 
 const AppNav = () => {
-  const { userToken, userRole, isLoading, splashLoading } = useContext(AuthContext);
+  const { userToken, userRole, isLoading, splashLoading, setSplashLoading } = useContext(AuthContext);
 
-  useEffect(() => {
-    if (!splashLoading) {
-      SplashScreen.hideAsync();
-    }
-  }, [splashLoading]);
+  // useEffect(() => {
+  //   if (!splashLoading) {
+  //     SplashScreen.hideAsync();
+  //   }
+  // }, [splashLoading]);
 
   if (splashLoading) {
-    return null;
+    return <CustomSplashScreen onFinish={() => setSplashLoading(false)} />;
   }
 
   if (isLoading) {
@@ -92,6 +105,8 @@ const AppNav = () => {
             <Stack.Screen name="TeacherSession" component={TeacherSessionScreen} options={{ headerShown: true }} />
             <Stack.Screen name="Timetable" component={TimetableScreen} options={{ title: 'Weekly Schedule', headerShown: true }} />
             <Stack.Screen name="AdvisorDashboard" component={AdvisorDashboard} options={{ title: 'Pending Approvals', headerShown: true }} />
+            <Stack.Screen name="Announcements" component={AnnouncementsScreen} options={{ title: 'Notice Board', headerShown: true }} />
+            <Stack.Screen name="CreateAnnouncement" component={CreateAnnouncementScreen} options={{ title: 'New Announcement', headerShown: true }} />
           </>
         ) : (
           <>
@@ -99,6 +114,7 @@ const AppNav = () => {
             <Stack.Screen name="StudentAttendance" component={StudentAttendanceScreen} options={{ headerShown: true }} />
             <Stack.Screen name="Timetable" component={TimetableScreen} options={{ title: 'Weekly Schedule', headerShown: true }} />
             <Stack.Screen name="ODApply" component={ODApplyScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Announcements" component={AnnouncementsScreen} options={{ title: 'Notice Board', headerShown: true }} />
           </>
         )}
       </Stack.Navigator>
@@ -113,10 +129,48 @@ export default function App() {
         await SplashScreen.preventAutoHideAsync();
       } catch (e) {
         console.warn(e);
+      } finally {
+        await SplashScreen.hideAsync();
       }
     }
     prepare();
+    registerForPushNotificationsAsync();
   }, []);
+
+  async function registerForPushNotificationsAsync() {
+    let token;
+    if (Device.isDevice) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        return;
+      }
+      try {
+        // Expo Go SDK 53 removes support for remote notifications in Go client
+        // token = (await Notifications.getExpoPushTokenAsync()).data;
+      } catch (e) {
+        console.log('Push token fetch failed (Expected in Expo Go):', e);
+      }
+    }
+
+    if (Platform.OS === 'android') {
+      try {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      } catch (e) {
+        console.log('Notification Channel setup failed (Expected in Expo Go):', e);
+      }
+    }
+    return token;
+  }
 
   return (
     <View style={{ flex: 1 }}>

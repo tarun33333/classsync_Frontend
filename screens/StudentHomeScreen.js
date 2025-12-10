@@ -162,6 +162,13 @@ const StudentHomeScreen = ({ navigation }) => {
                 <Text style={[styles.fullScheduleText, { color: '#065f46' }]}>Apply for On-Duty</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity
+                style={[styles.fullScheduleBtn, { marginTop: 15, backgroundColor: '#E0F7FA' }]}
+                onPress={() => navigation.navigate('Announcements')}
+            >
+                <Text style={[styles.fullScheduleText, { color: '#006064' }]}>📢 Notice Board</Text>
+            </TouchableOpacity>
+
             <View style={{ height: 40 }} />
         </ScrollView>
     );

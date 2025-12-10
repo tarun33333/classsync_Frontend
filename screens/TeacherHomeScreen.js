@@ -143,6 +143,13 @@ const TeacherHomeScreen = ({ navigation }) => {
                 </TouchableOpacity>
             )}
 
+            <TouchableOpacity
+                style={[styles.fullScheduleBtn, { backgroundColor: '#E0F7FA', marginTop: 10 }]}
+                onPress={() => navigation.navigate('Announcements', { role: 'teacher' })}
+            >
+                <Text style={[styles.fullScheduleText, { color: '#006064' }]}>📢 Notice Board</Text>
+            </TouchableOpacity>
+
         </View>
     );
 };

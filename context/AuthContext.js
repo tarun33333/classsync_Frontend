@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
         } catch (e) {
             console.log(`isLoggedIn error ${e}`);
         } finally {
-            setSplashLoading(false);
+            // setSplashLoading(false); // Handled by CustomSplashScreen
         }
     };
 
@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ login, logout, isLoading, splashLoading, userToken, userRole, userInfo }}>
+        <AuthContext.Provider value={{ login, logout, isLoading, splashLoading, setSplashLoading, userToken, userRole, userInfo }}>
             {children}
         </AuthContext.Provider>
     );
