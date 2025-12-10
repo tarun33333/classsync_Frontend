@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
 import { View, ActivityIndicator } from 'react-native';
 
-import CustomSplashScreen from './screens/CustomSplashScreen';
+// import CustomSplashScreen from './screens/CustomSplashScreen';
 import LoadingScreen from './components/LoadingScreen';
 
 import LoginScreen from './screens/LoginScreen';

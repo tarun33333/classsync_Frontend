@@ -19,6 +19,7 @@
     "expo": "~54.0.25",
     "expo-application": "~7.0.7",
     "expo-camera": "~17.0.9",
+    "expo-dev-client": "~6.0.20",
     "expo-file-system": "~19.0.20",
     "expo-network": "~8.0.7",
     "expo-secure-store": "~15.0.7",

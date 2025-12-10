@@ -11,7 +11,7 @@ const TeacherHomeScreen = ({ navigation }) => {
 
     useEffect(() => {
         fetchRoutines();
-        checkActiveSession();
+        // checkActiveSession(); // TEMPORARILY DISABLED: To break loop due to stuck session (Backend 'od' error)
     }, []);
 
     const fetchRoutines = async () => {
@@ -19,7 +19,7 @@ const TeacherHomeScreen = ({ navigation }) => {
             const res = await client.get('/routines/teacher');
             setRoutines(res.data);
         } catch (error) {
-            console.log('Error fetching routines');
+            // console.log('Error fetching routines');
         }
     };
 
@@ -31,29 +31,50 @@ const TeacherHomeScreen = ({ navigation }) => {
                 navigation.navigate('TeacherSession', { session: res.data });
             }
         } catch (error) {
-            console.log('No active session');
+            // console.log('No active session');
         }
     };
 
     const startSession = async (routine) => {
         try {
+            // console.log('Attempting to start session with routine:', routine);
             const { isConnected } = await Network.getNetworkStateAsync();
             if (!isConnected) {
                 Alert.alert('Error', 'No internet connection');
                 return;
             }
 
+            const ipAddress = await Network.getIpAddressAsync();
+            // console.log('IP Address:', ipAddress);
+
             const sessionData = {
                 subject: routine.subject,
-                section: routine.section,
-                bssid: (await Network.getIpAddressAsync()) || 'UNKNOWN',
-                ssid: 'ClassWiFi' // Optional, just a label
+                section: routine.section || 'A', // Default to 'A' if undefined (Fixes ClassHistory validation & Student filtering)
+                batch: routine.batch,
+                dept: routine.dept,
+                semester: routine.semester,
+                periodNo: routine.periodNo,
+                day: routine.day,
+                startTime: routine.startTime,
+                endTime: routine.endTime,
+                bssid: ipAddress || 'UNKNOWN',
+                ssid: 'ClassWiFi'
             };
 
+            // console.log('Sending sessionData:', sessionData);
+
             const res = await client.post('/sessions/start', sessionData);
+            // console.log('Session started successfully:', res.data);
             navigation.navigate('TeacherSession', { session: res.data });
         } catch (error) {
-            Alert.alert('Error', 'Failed to start session');
+            console.error('Start Session Error:', error);
+            if (error.response) {
+                console.log('Error Response Data:', error.response.data);
+                console.log('Error Response Status:', error.response.status);
+                console.log('Error Response Headers:', error.response.headers);
+            }
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to start session';
+            Alert.alert('Error', errorMessage);
         }
     };
 

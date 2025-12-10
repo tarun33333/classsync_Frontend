@@ -26,11 +26,19 @@ const TeacherSessionScreen = ({ route, navigation }) => {
 
     const endSession = async () => {
         try {
-            await client.post('/sessions/end', { sessionId: session._id });
+            console.log('Ending session:', session._id);
+            const res = await client.post('/sessions/end', { sessionId: session._id });
+            console.log('Session ended response:', res.data);
             clearInterval(refreshInterval);
             navigation.navigate('TeacherMain');
         } catch (error) {
-            Alert.alert('Error', 'Failed to end session');
+            console.error('End Session Error:', error);
+            if (error.response) {
+                console.log('End Session Error Data:', error.response.data);
+                console.log('End Session Error Status:', error.response.status);
+            }
+            const errorMessage = error.response?.data?.message || 'Failed to end session';
+            Alert.alert('Error', errorMessage);
         }
     };
 

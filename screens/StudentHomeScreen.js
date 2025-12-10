@@ -13,15 +13,21 @@ const StudentHomeScreen = ({ navigation }) => {
 
     const fetchDashboard = async () => {
         try {
+            // console.log('Fetching student dashboard...');
             const res = await client.get('/attendance/dashboard');
+            // console.log('Student Dashboard Data:', JSON.stringify(res.data, null, 2));
             setPeriods(res.data);
 
             // Find active period
             const ongoing = res.data.find(p => p.status === 'ongoing');
+            // console.log('Found ongoing session:', ongoing);
             setActivePeriod(ongoing || null);
 
         } catch (error) {
-            console.log('Error fetching dashboard', error);
+            // console.log('Error fetching dashboard', error);
+            if (error.response) {
+                // console.log('Dashboard Error Data:', error.response.data);
+            }
             if (error.response && (error.response.status === 401 || error.response.status === 403)) {
                 navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
             }
@@ -37,7 +43,7 @@ const StudentHomeScreen = ({ navigation }) => {
                     setPeriods(res.data);
                     const ongoing = res.data.find(p => p.status === 'ongoing');
                     setActivePeriod(ongoing || null);
-                }).catch(err => console.log('Background fetch error', err));
+                }).catch(err => { /* console.log('Background fetch error', err) */ });
             }, 2000);
 
             return () => clearInterval(intervalId);
