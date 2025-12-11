@@ -4,7 +4,7 @@ import client from '../api/client';
 import { AuthContext } from '../context/AuthContext';
 
 const CreateAnnouncementScreen = ({ navigation, route }) => {
-    const { userInfo } = useContext(AuthContext);
+    const { userInfo, userRole } = useContext(AuthContext);
     const existingAnnouncement = route.params?.announcement;
     const isEditMode = !!existingAnnouncement;
 
@@ -31,7 +31,7 @@ const CreateAnnouncementScreen = ({ navigation, route }) => {
                     title,
                     message,
                     authorName: userInfo.name,
-                    authorRole: userInfo.role
+                    authorRole: userRole
                 });
                 Alert.alert('Success', 'Announcement posted!');
             }
