@@ -12,10 +12,26 @@ const { StorageAccessFramework } = FileSystem;
 const screenWidth = Dimensions.get('window').width;
 
 const TeacherAnalyticsScreen = () => {
-    // Selection State
+    // Master Data
     const [teacherClasses, setTeacherClasses] = useState([]);
-    const [selectedClass, setSelectedClass] = useState(null);
+
+    // Selection State
+    const [selectedDept, setSelectedDept] = useState(null);
+    const [selectedBatch, setSelectedBatch] = useState(null);
+    const [selectedSemester, setSelectedSemester] = useState(null);
+    const [selectedSubject, setSelectedSubject] = useState(null);
+    const [selectedSection, setSelectedSection] = useState('A'); // Default hardcoded for now
+
+    // Dropdown Data (Derived)
+    const [deptList, setDeptList] = useState([]);
+    const [batchList, setBatchList] = useState([]);
+    const [semList, setSemList] = useState([]);
+    const [subjectList, setSubjectList] = useState([]);
+
+    // Modal State
     const [modalVisible, setModalVisible] = useState(false);
+    const [modalType, setModalType] = useState(null); // 'dept', 'batch', 'sem', 'sub'
+    const [modalData, setModalData] = useState([]);
 
     // Date State
     const [startDate, setStartDate] = useState(new Date());
@@ -36,14 +52,71 @@ const TeacherAnalyticsScreen = () => {
         try {
             const res = await client.get('/routines/teacher/classes');
             setTeacherClasses(res.data);
+
+            // Extract Unique Depts
+            const depts = [...new Set(res.data.map(item => item.dept))];
+            setDeptList(depts);
         } catch (error) {
             console.log('Error fetching classes');
+            Alert.alert('Error', 'Could not load classes');
         }
     };
 
+    // Cascading Logic
+    useEffect(() => {
+        if (selectedDept) {
+            const batches = [...new Set(teacherClasses
+                .filter(item => item.dept === selectedDept)
+                .map(item => item.batch))];
+            setBatchList(batches);
+            setSelectedBatch(null);
+            setSelectedSemester(null);
+            setSelectedSubject(null);
+        }
+    }, [selectedDept]);
+
+    useEffect(() => {
+        if (selectedBatch) {
+            const sems = [...new Set(teacherClasses
+                .filter(item => item.dept === selectedDept && item.batch === selectedBatch)
+                .map(item => item.semester))];
+            setSemList(sems.sort((a, b) => a - b)); // numeric sort
+            setSelectedSemester(null);
+            setSelectedSubject(null);
+        }
+    }, [selectedBatch]);
+
+    useEffect(() => {
+        if (selectedSemester) {
+            const subs = [...new Set(teacherClasses
+                .filter(item => item.dept === selectedDept && item.batch === selectedBatch && item.semester === selectedSemester)
+                .map(item => item.subject))];
+            setSubjectList(subs);
+            setSelectedSubject(null);
+        }
+    }, [selectedSemester]);
+
+
+    const openModal = (type) => {
+        setModalType(type);
+        if (type === 'dept') setModalData(deptList);
+        else if (type === 'batch') setModalData(batchList);
+        else if (type === 'sem') setModalData(semList);
+        else if (type === 'sub') setModalData(subjectList);
+        setModalVisible(true);
+    };
+
+    const handleSelect = (item) => {
+        if (modalType === 'dept') setSelectedDept(item);
+        else if (modalType === 'batch') setSelectedBatch(item);
+        else if (modalType === 'sem') setSelectedSemester(item);
+        else if (modalType === 'sub') setSelectedSubject(item);
+        setModalVisible(false);
+    };
+
     const generateReport = async () => {
-        if (!selectedClass) {
-            Alert.alert('Error', 'Please select a class');
+        if (!selectedDept || !selectedBatch || !selectedSemester || !selectedSubject) {
+            Alert.alert('Error', 'Please select all fields (Dept, Batch, Sem, Subject)');
             return;
         }
 
@@ -53,10 +126,10 @@ const TeacherAnalyticsScreen = () => {
 
         try {
             const payload = {
-                dept: selectedClass.dept,
-                semester: selectedClass.semester,
-                subject: selectedClass.subject,
-                section: selectedClass.section || 'A', // Default to A if not present
+                dept: selectedDept,
+                semester: selectedSemester,
+                subject: selectedSubject,
+                section: selectedSection, // Default 'A'
                 startDate,
                 endDate
             };
@@ -74,17 +147,12 @@ const TeacherAnalyticsScreen = () => {
 
     const calculateStats = (data) => {
         if (!data || data.length === 0) {
-            setStats({
-                present: 0,
-                absent: 0,
-                avgValidation: 0
-            });
+            setStats({ present: 0, absent: 0, avgValidation: 0 });
             return;
         }
 
-        // Calculate aggregate counts
         let totalPresent = 0;
-        let totalClassesExpected = 0; // sum of total classes * students
+        let totalClassesExpected = 0;
 
         data.forEach(student => {
             totalPresent += student.present;
@@ -94,16 +162,13 @@ const TeacherAnalyticsScreen = () => {
         const totalAbsent = totalClassesExpected - totalPresent;
         const avgPercentage = totalClassesExpected > 0 ? ((totalPresent / totalClassesExpected) * 100).toFixed(1) : 0;
 
-        setStats({
-            present: totalPresent,
-            absent: totalAbsent,
-            avgValidation: avgPercentage
-        });
+        setStats({ present: totalPresent, absent: totalAbsent, avgValidation: avgPercentage });
     };
 
     const downloadPdf = async () => {
         if (!reportData) return;
 
+        // Similar to before...
         const html = `
             <html>
             <head>
@@ -117,9 +182,9 @@ const TeacherAnalyticsScreen = () => {
                 </style>
             </head>
             <body>
-                <h1>Attendance Analytics</h1>
-                <p><strong>Subject:</strong> ${selectedClass.subject}</p>
-                <p><strong>Class:</strong> ${selectedClass.dept} - Sem ${selectedClass.semester}</p>
+                 <h1>Attendance Analytics</h1>
+                <p><strong>Subject:</strong> ${selectedSubject}</p>
+                <p><strong>Class:</strong> ${selectedDept} - Sem ${selectedSemester} (Batch ${selectedBatch})</p>
                 <p><strong>Date Range:</strong> ${new Date(reportData.range.start).toLocaleDateString()} to ${new Date(reportData.range.end).toLocaleDateString()}</p>
                 <p><strong>Total Classes Held:</strong> ${reportData.totalClasses}</p>
                 <p><strong>Average Class Attendance:</strong> ${stats ? stats.avgValidation : 0}%</p>
@@ -150,31 +215,22 @@ const TeacherAnalyticsScreen = () => {
 
         try {
             const { uri } = await Print.printToFileAsync({ html });
-
             if (Platform.OS === 'android' && StorageAccessFramework) {
-                // Try using SAF
                 try {
                     const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
                     if (permissions.granted) {
-                        const fileName = `Analytics_${selectedClass.subject}_${new Date().getTime()}.pdf`;
+                        const fileName = `Analytics_${selectedSubject}_${new Date().getTime()}.pdf`;
                         const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
                         const createdUri = await StorageAccessFramework.createFileAsync(permissions.directoryUri, fileName, 'application/pdf');
                         await FileSystem.writeAsStringAsync(createdUri, base64, { encoding: FileSystem.EncodingType.Base64 });
-                        Alert.alert('Success', 'PDF saved to your device!');
+                        Alert.alert('Success', 'PDF saved!');
                         return;
                     }
-                } catch (e) {
-                    console.log('SAF Error', e);
-                    // Fallthrough to sharing
-                }
+                } catch (e) { console.log('SAF Error', e); }
             }
-
-            // Fallback
             await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-
         } catch (error) {
             Alert.alert('Error', 'Could not generate or share PDF.');
-            console.log(error);
         }
     };
 
@@ -195,17 +251,43 @@ const TeacherAnalyticsScreen = () => {
     return (
         <ScrollView style={styles.container}>
             <View style={styles.controls}>
-                <Text style={styles.label}>Class:</Text>
-                <TouchableOpacity style={styles.selector} onPress={() => setModalVisible(true)}>
-                    <Text style={styles.selectorText}>
-                        {selectedClass
-                            ? `${selectedClass.dept} - Sem ${selectedClass.semester} - ${selectedClass.subject}`
-                            : 'Select a Class'}
-                    </Text>
+                <Text style={styles.headerTitle}>Analytics Filters</Text>
+
+                {/* Dept Selector */}
+                <Text style={styles.label}>Department</Text>
+                <TouchableOpacity style={styles.selector} onPress={() => openModal('dept')}>
+                    <Text style={styles.selectorText}>{selectedDept || 'Select Department'}</Text>
                     <Ionicons name="chevron-down" size={20} color="#666" />
                 </TouchableOpacity>
 
-                <Text style={styles.label}>Date Range:</Text>
+                {/* Batch Selector */}
+                <Text style={styles.label}>Batch</Text>
+                <TouchableOpacity style={[styles.selector, !selectedDept && styles.disabled]} onPress={() => selectedDept && openModal('batch')} disabled={!selectedDept}>
+                    <Text style={styles.selectorText}>{selectedBatch || 'Select Batch'}</Text>
+                    <Ionicons name="chevron-down" size={20} color="#666" />
+                </TouchableOpacity>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    {/* Sem Selector */}
+                    <View style={{ flex: 1, marginRight: 5 }}>
+                        <Text style={styles.label}>Semester</Text>
+                        <TouchableOpacity style={[styles.selector, !selectedBatch && styles.disabled]} onPress={() => selectedBatch && openModal('sem')} disabled={!selectedBatch}>
+                            <Text style={styles.selectorText}>{selectedSemester ? `Sem ${selectedSemester}` : 'Select'}</Text>
+                            <Ionicons name="chevron-down" size={20} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Subject Selector */}
+                    <View style={{ flex: 1.5, marginLeft: 5 }}>
+                        <Text style={styles.label}>Subject</Text>
+                        <TouchableOpacity style={[styles.selector, !selectedSemester && styles.disabled]} onPress={() => selectedSemester && openModal('sub')} disabled={!selectedSemester}>
+                            <Text style={styles.selectorText} numberOfLines={1}>{selectedSubject || 'Select Subject'}</Text>
+                            <Ionicons name="chevron-down" size={20} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <Text style={styles.label}>Date Range</Text>
                 <View style={styles.dateRow}>
                     <RenderDateBtn date={startDate} setShow={setShowStartPicker} />
                     <Text style={{ marginHorizontal: 10 }}>to</Text>
@@ -213,31 +295,18 @@ const TeacherAnalyticsScreen = () => {
                 </View>
 
                 {showStartPicker && (
-                    <DateTimePicker
-                        value={startDate}
-                        mode="date"
-                        display="default"
-                        onChange={(event, selected) => {
-                            setShowStartPicker(Platform.OS === 'ios');
-                            if (selected) setStartDate(selected);
-                        }}
+                    <DateTimePicker value={startDate} mode="date" display="default"
+                        onChange={(event, selected) => { setShowStartPicker(Platform.OS === 'ios'); if (selected) setStartDate(selected); }}
                     />
                 )}
-
                 {showEndPicker && (
-                    <DateTimePicker
-                        value={endDate}
-                        mode="date"
-                        display="default"
-                        onChange={(event, selected) => {
-                            setShowEndPicker(Platform.OS === 'ios');
-                            if (selected) setEndDate(selected);
-                        }}
+                    <DateTimePicker value={endDate} mode="date" display="default"
+                        onChange={(event, selected) => { setShowEndPicker(Platform.OS === 'ios'); if (selected) setEndDate(selected); }}
                     />
                 )}
 
-                <TouchableOpacity style={styles.generateBtn} onPress={generateReport} disabled={loading}>
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Generate Analytics</Text>}
+                <TouchableOpacity style={[styles.generateBtn, (!selectedSubject) && { opacity: 0.7 }]} onPress={generateReport} disabled={loading || !selectedSubject}>
+                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Generate Report</Text>}
                 </TouchableOpacity>
             </View>
 
@@ -245,12 +314,10 @@ const TeacherAnalyticsScreen = () => {
             {reportData && stats && (
                 <View style={styles.dashboard}>
                     {reportData.report.length === 0 ? (
-                        <Text style={{ textAlign: 'center', marginVertical: 20, color: '#666' }}>No attendance records found for this period.</Text>
+                        <Text style={styles.noDataText}>No attendance records found.</Text>
                     ) : (
                         <>
                             <Text style={styles.sectionTitle}>Overview</Text>
-
-                            {/* Summary Cards */}
                             <View style={styles.statsRow}>
                                 <View style={[styles.statCard, { backgroundColor: '#e3f2fd' }]}>
                                     <Text style={styles.statLabel}>Avg Attendance</Text>
@@ -262,7 +329,6 @@ const TeacherAnalyticsScreen = () => {
                                 </View>
                             </View>
 
-                            {/* Chart */}
                             <ScrollView horizontal={true} contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
                                 <PieChart
                                     data={[
@@ -287,7 +353,6 @@ const TeacherAnalyticsScreen = () => {
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Student List */}
                             {reportData.report.map((item, index) => (
                                 <View key={item.studentId} style={styles.row}>
                                     <View style={{ flex: 2 }}>
@@ -296,9 +361,7 @@ const TeacherAnalyticsScreen = () => {
                                     </View>
                                     <View style={{ alignItems: 'flex-end' }}>
                                         <Text style={styles.present}>{item.present}/{item.total}</Text>
-                                        <Text style={[styles.percentage, { color: item.percentage < 75 ? 'red' : 'green' }]}>
-                                            {item.percentage}%
-                                        </Text>
+                                        <Text style={[styles.percentage, { color: item.percentage < 75 ? 'red' : 'green' }]}>{item.percentage}%</Text>
                                     </View>
                                 </View>
                             ))}
@@ -307,32 +370,23 @@ const TeacherAnalyticsScreen = () => {
                 </View>
             )}
 
-            <Modal
-                animationType="slide"
-                transparent={true}
-                visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <View style={styles.modalView}>
-                    <Text style={styles.modalTitle}>Select Class</Text>
-                    <FlatList
-                        data={teacherClasses}
-                        keyExtractor={(item, index) => `${item.subject}-${index}`}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.modalItem}
-                                onPress={() => {
-                                    setSelectedClass(item);
-                                    setModalVisible(false);
-                                }}
-                            >
-                                <Text style={styles.modalItemText}>{item.dept} - Sem {item.semester} - {item.subject}</Text>
-                            </TouchableOpacity>
-                        )}
-                    />
-                    <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
-                        <Text style={styles.closeBtnText}>Close</Text>
-                    </TouchableOpacity>
+            <Modal animationType="fade" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Select Option</Text>
+                        <FlatList
+                            data={modalData}
+                            keyExtractor={(item, index) => index.toString()}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity style={styles.modalItem} onPress={() => handleSelect(item)}>
+                                    <Text style={styles.modalItemText}>{item}</Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                        <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
+                            <Text style={styles.closeBtnText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </Modal>
         </ScrollView>
@@ -342,38 +396,45 @@ const TeacherAnalyticsScreen = () => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8f9fa', padding: 15 },
     controls: { backgroundColor: '#fff', padding: 15, borderRadius: 12, elevation: 2, marginBottom: 15 },
-    label: { fontSize: 14, color: '#666', marginBottom: 5, fontWeight: 'bold' },
-    selector: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0f0f0', padding: 12, borderRadius: 8, marginBottom: 15 },
-    selectorText: { fontSize: 16 },
+    headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 15 },
+    label: { fontSize: 13, color: '#666', marginBottom: 5, fontWeight: '600' },
+    selector: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f5f5f5', padding: 12, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: '#eee' },
+    disabled: { opacity: 0.5, backgroundColor: '#eee' },
+    selectorText: { fontSize: 15, color: '#333' },
+
     dateRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-    dateBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', padding: 10, borderRadius: 8, justifyContent: 'center' },
-    dateText: { marginLeft: 5, fontWeight: '600' },
-    generateBtn: { backgroundColor: '#4834d4', padding: 15, borderRadius: 10, alignItems: 'center' },
+    dateBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', padding: 10, borderRadius: 8, justifyContent: 'center', borderWidth: 1, borderColor: '#eee' },
+    dateText: { marginLeft: 5, fontWeight: '600', color: '#444' },
+
+    generateBtn: { backgroundColor: '#4834d4', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 10 },
     btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 
     dashboard: { backgroundColor: '#fff', borderRadius: 12, padding: 15, elevation: 2, marginBottom: 30 },
+    noDataText: { textAlign: 'center', marginVertical: 20, color: '#888', fontStyle: 'italic' },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#333' },
+
     statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
     statCard: { flex: 1, padding: 15, borderRadius: 10, marginHorizontal: 5, alignItems: 'center' },
     statLabel: { fontSize: 12, color: '#666', marginBottom: 5 },
     statValue: { fontSize: 20, fontWeight: 'bold' },
 
     resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, marginTop: 10, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 15 },
-    downloadIconBtn: { flexDirection: 'row', alignItems: 'center' },
-    downloadText: { marginLeft: 5, color: '#4834d4', fontWeight: 'bold' },
+    downloadIconBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#e3f2fd', padding: 5, borderRadius: 5, paddingHorizontal: 10 },
+    downloadText: { marginLeft: 5, color: '#4834d4', fontWeight: 'bold', fontSize: 12 },
 
-    row: { flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', alignItems: 'center', justifyContent: 'space-between' },
+    row: { flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f9f9f9', alignItems: 'center', justifyContent: 'space-between' },
     name: { fontWeight: '600', fontSize: 15, color: '#333' },
     roll: { fontSize: 12, color: '#666' },
     present: { fontSize: 14, color: '#444', textAlign: 'right' },
     percentage: { fontWeight: 'bold', fontSize: 15, textAlign: 'right' },
 
-    modalView: { flex: 1, marginTop: 50, backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, elevation: 5 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
-    modalItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
-    modalItemText: { fontSize: 16 },
-    closeBtn: { marginTop: 20, backgroundColor: '#eee', padding: 15, alignItems: 'center', borderRadius: 10 },
-    closeBtnText: { fontWeight: 'bold' }
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+    modalContent: { backgroundColor: 'white', borderRadius: 15, padding: 20, maxHeight: 400 },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
+    modalItem: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#eee', alignItems: 'center' },
+    modalItemText: { fontSize: 16, color: '#333' },
+    closeBtn: { marginTop: 15, padding: 12, alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 8 },
+    closeBtnText: { fontWeight: 'bold', color: '#666' }
 });
 
 export default TeacherAnalyticsScreen;
