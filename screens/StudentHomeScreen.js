@@ -4,6 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatTime } from '../utils/timeUtils';
 
 const StudentHomeScreen = ({ navigation }) => {
     const { userInfo } = useContext(AuthContext);
@@ -86,7 +87,7 @@ const StudentHomeScreen = ({ navigation }) => {
                 <View style={[styles.heroCard, styles.shadow]}>
                     <View style={styles.heroHeader}>
                         <Text style={styles.liveBadge}>🔴 LIVE PROCTORING</Text>
-                        <Text style={styles.heroTime}>{activePeriod.startTime} - {activePeriod.endTime}</Text>
+                        <Text style={styles.heroTime}>{formatTime(activePeriod.startTime)} - {formatTime(activePeriod.endTime)}</Text>
                     </View>
 
                     <Text style={styles.heroSubject}>{activePeriod.subject}</Text>
@@ -128,8 +129,8 @@ const StudentHomeScreen = ({ navigation }) => {
                     .map((item, index) => (
                         <View key={index} style={[styles.classCard, item.status === 'ongoing' && styles.activeBorder]}>
                             <View style={styles.timeColumn}>
-                                <Text style={styles.startTime}>{item.startTime}</Text>
-                                <Text style={styles.endTime}>{item.endTime}</Text>
+                                <Text style={styles.startTime}>{formatTime(item.startTime)}</Text>
+                                <Text style={styles.endTime}>{formatTime(item.endTime)}</Text>
                             </View>
                             <View style={styles.infoColumn}>
                                 <Text style={styles.listSubject}>{item.subject}</Text>

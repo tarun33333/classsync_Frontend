@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import client from '../api/client';
+import { formatTime } from '../utils/timeUtils';
 
 const StudentHistoryScreen = () => {
     const [history, setHistory] = useState([]);
@@ -26,7 +27,8 @@ const StudentHistoryScreen = () => {
 
             const marks = {};
             res.data.forEach(item => {
-                const date = item.createdAt.split('T')[0];
+                const dateRaw = item.timestamp || (item.session && item.session.startTime) || item.createdAt;
+                const date = dateRaw.split('T')[0];
                 marks[date] = {
                     marked: true,
                     dotColor: item.status === 'present' ? 'green' : 'red'
@@ -39,7 +41,10 @@ const StudentHistoryScreen = () => {
     };
 
     const filterHistoryByDate = (date) => {
-        const filtered = history.filter(item => item.createdAt.split('T')[0] === date);
+        const filtered = history.filter(item => {
+            const itemDateRaw = item.timestamp || (item.session && item.session.startTime) || item.createdAt;
+            return itemDateRaw.split('T')[0] === date;
+        });
         setDailyHistory(filtered);
     };
 
@@ -51,7 +56,7 @@ const StudentHistoryScreen = () => {
         <View style={styles.card}>
             <View>
                 <Text style={styles.subject}>{item.session?.subject || 'Archived Class'}</Text>
-                <Text style={styles.time}>{new Date(item.session?.startTime || item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                <Text style={styles.time}>{formatTime(item.session?.startTime || item.createdAt)}</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
                 <Text style={[styles.status, item.status === 'present' ? styles.present : styles.absent]}>

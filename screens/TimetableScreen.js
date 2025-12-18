@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SectionList, ActivityIndicator } from 'react-native';
 import client from '../api/client';
+import { formatTime } from '../utils/timeUtils';
 
 const TimetableScreen = ({ route }) => {
     const { role } = route.params; // 'student' or 'teacher'
@@ -35,8 +36,8 @@ const TimetableScreen = ({ route }) => {
     const renderItem = ({ item }) => (
         <View style={styles.card}>
             <View style={styles.timeContainer}>
-                <Text style={styles.startTime}>{item.startTime}</Text>
-                <Text style={styles.endTime}>{item.endTime}</Text>
+                <Text style={styles.startTime}>{formatTime(item.startTime)}</Text>
+                <Text style={styles.endTime}>{formatTime(item.endTime)}</Text>
             </View>
             <View style={styles.infoContainer}>
                 <Text style={styles.subject}>{item.subject}</Text>

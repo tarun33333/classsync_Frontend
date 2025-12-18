@@ -7,12 +7,22 @@ const TeacherSessionScreen = ({ route, navigation }) => {
     const { session } = route.params;
     const [attendanceList, setAttendanceList] = useState([]);
     const [refreshInterval, setRefreshInterval] = useState(null);
+    const [qrInterval, setQrInterval] = useState(null);
+    const [qrValue, setQrValue] = useState(session.qrCode);
 
     useEffect(() => {
         fetchAttendance();
-        const interval = setInterval(fetchAttendance, 5000); // Poll every 5s
+        const interval = setInterval(fetchAttendance, 5000); // Poll attendance every 5s
         setRefreshInterval(interval);
-        return () => clearInterval(interval);
+
+        // Dynamic QR Rotation
+        const qrTimer = setInterval(refreshQr, 5000); // Rotate QR every 5s
+        setQrInterval(qrTimer);
+
+        return () => {
+            clearInterval(interval);
+            clearInterval(qrTimer);
+        };
     }, []);
 
     const fetchAttendance = async () => {
@@ -24,12 +34,23 @@ const TeacherSessionScreen = ({ route, navigation }) => {
         }
     };
 
+    const refreshQr = async () => {
+        try {
+            const res = await client.post('/sessions/refresh-qr', { sessionId: session._id });
+            setQrValue(res.data.qrCode);
+            console.log('QR Code Rotated:', res.data.qrCode);
+        } catch (error) {
+            console.log('Error rotating QR:', error);
+        }
+    };
+
     const endSession = async () => {
         try {
             console.log('Ending session:', session._id);
             const res = await client.post('/sessions/end', { sessionId: session._id });
             console.log('Session ended response:', res.data);
             clearInterval(refreshInterval);
+            clearInterval(qrInterval);
             navigation.navigate('TeacherMain');
         } catch (error) {
             console.error('End Session Error:', error);
@@ -49,9 +70,10 @@ const TeacherSessionScreen = ({ route, navigation }) => {
             <View style={styles.infoBox}>
                 <Text style={styles.infoText}>OTP: {session.otp}</Text>
                 <View style={styles.qrContainer}>
-                    <QRCode value={session.qrCode} size={150} />
+                    <QRCode value={qrValue} size={150} />
                 </View>
                 <Text style={styles.infoText}>Scan to Mark Attendance</Text>
+                <Text style={{ color: 'gray', fontSize: 12 }}>QR rotates every 5s</Text>
             </View>
 
             <Text style={styles.subHeader}>Live Attendance ({attendanceList.length})</Text>

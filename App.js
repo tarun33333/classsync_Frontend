@@ -14,6 +14,7 @@ import LoginScreen from './screens/LoginScreen';
 import TeacherHomeScreen from './screens/TeacherHomeScreen';
 import TeacherSessionScreen from './screens/TeacherSessionScreen';
 import TeacherReportsScreen from './screens/TeacherReportsScreen';
+import TeacherAnalyticsScreen from './screens/TeacherAnalyticsScreen';
 import StudentHomeScreen from './screens/StudentHomeScreen';
 import StudentAttendanceScreen from './screens/StudentAttendanceScreen';
 import StudentHistoryScreen from './screens/StudentHistoryScreen';
@@ -44,7 +45,8 @@ const TeacherTabs = () => (
     tabBarIcon: ({ focused, color, size }) => {
       let iconName;
       if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
-      else if (route.name === 'Reports') iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+      else if (route.name === 'Reports') iconName = focused ? 'document-text' : 'document-text-outline';
+      else if (route.name === 'Analytics') iconName = focused ? 'stats-chart' : 'stats-chart-outline';
       else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
       return <Ionicons name={iconName} size={size} color={color} />;
     },
@@ -53,6 +55,7 @@ const TeacherTabs = () => (
   })}>
     <Tab.Screen name="Home" component={TeacherHomeScreen} />
     <Tab.Screen name="Reports" component={TeacherReportsScreen} />
+    <Tab.Screen name="Analytics" component={TeacherAnalyticsScreen} />
     <Tab.Screen name="Profile" component={ProfileScreen} />
   </Tab.Navigator>
 );

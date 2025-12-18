@@ -3,6 +3,7 @@ import { View, Text, Button, StyleSheet, Alert, FlatList, TouchableOpacity } fro
 import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
 import * as Network from 'expo-network';
+import { formatTime } from '../utils/timeUtils';
 
 const TeacherHomeScreen = ({ navigation }) => {
     const { userInfo } = useContext(AuthContext);
@@ -106,7 +107,7 @@ const TeacherHomeScreen = ({ navigation }) => {
             <View style={styles.card}>
                 <View>
                     <Text style={styles.subject}>{item.subject}</Text>
-                    <Text style={styles.details}>{item.section} | {item.day} | {item.startTime} - {item.endTime}</Text>
+                    <Text style={styles.details}>{item.section} | {item.day} | {formatTime(item.startTime)} - {formatTime(item.endTime)}</Text>
                 </View>
                 {canStart && (
                     <Button title="Start" onPress={() => startSession(item)} />
